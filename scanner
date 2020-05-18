@@ -1,0 +1,136 @@
+#!/usr/bin/env ruby
+
+# From https://github.com/dam13n/ruby-bury/blob/master/hash.rb
+class Hash
+  def bury(*args)
+    if args.count < 2
+      raise ArgumentError.new("2 or more arguments required")
+    elsif args.count == 2
+      self[args[0]] = args[1]
+    else
+      arg = args.shift
+      self[arg] = {} unless self[arg]
+      self[arg].bury(*args) unless args.empty?
+    end
+    self
+  end
+end
+
+class AccessLogScanner
+  RegexpSucks = Class.new(StandardError)
+
+  def exclude_from_detect
+    []
+  end
+
+  def nginx_log_regexp
+    %r{
+      (?<ip>\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\s
+      -\s
+      [^\s]+\s
+      \[
+      (?<day>[\d]{2})\/
+      (?<month>[\w]+)\/
+      (?<year>[\d]{4})\:
+      (?<hour>[\d]{2})\:
+      (?<min>[\d]{2})\:
+      (?<sec>[\d]{2})\s
+      (?<timezone>[\d+]+)
+      \]\s
+      "
+      (?<method>[^\s]+)\s
+      (?<request_path>[^\s]+?)\s
+      (?<protocol>[^"]+)
+      "\s
+      (?<status>[\d]+)\s
+      (?<body_bytes_sent>[^\s]+)\s
+      "(?<http_referer>[^"\\]*(?:\\.[^"\\]*)*)"\s
+      "(?<http_user_agent>[^"\\]*(?:\\.[^"\\]*)*)"\s
+      "-"
+    }x
+  end
+
+  # If we found '.something' in list, we will add '/.something' into list
+  def prepare_list(list)
+    new_list = []
+    list.each do |elem|
+      new_list << elem
+      next if elem.match?(/^[^\/]/) && list.include?("/#{elem}")
+      new_list << "/#{elem}"
+    end
+    new_list
+  end
+
+  def load_list_as_tree(list, excluded: [])
+    tree = {}
+    list.each do |elem|
+      next if excluded.include?(elem)
+      symbols = elem.chars
+      tree.bury(*symbols, {})
+    end
+    tree
+  end
+
+  def search_in_tree(test_string, tree)
+    accum = []
+    test_string.chars.each do |char|
+      accum << char
+      res = tree.dig(*accum)
+      return accum.join if res == {}
+      return false if res == nil
+    end
+    false
+  end
+
+  def on_suspicious_request
+    proc { |reason, parts| puts "[#{reason}] #{parts[0]}" }
+  end
+
+  def load_file(file_name)
+    raw = File.read(file_name)
+    list = raw.split("\n").map(&:strip)
+    prepare_list(list)
+  end
+
+  def run(argv:)
+    dictionary_filename = argv[0]
+    list = load_file(dictionary_filename)
+    fuzzy_tree = load_list_as_tree(list, excluded: exclude_from_detect)
+    fuzzy_tree_inversed = load_list_as_tree(list.map(&:reverse), excluded: exclude_from_detect.map(&:reverse))
+
+    while (str = STDIN.gets)
+      next if str.strip == ''
+
+      parts = str.match(nginx_log_regexp)
+      raise(RegexpSucks, str) unless parts
+
+      unless %w(GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE PATCH).include? parts[:method]
+        on_suspicious_request.call("method", parts)
+        next
+      end
+
+      unless %w(HTTP/1.0 HTTP/1.1).include? parts[:protocol]
+        on_suspicious_request.call("protocol", parts)
+        next
+      end
+
+      if (fuzzed = search_in_tree(parts[:request_path], fuzzy_tree))
+        on_suspicious_request.call("dictionary:#{fuzzed}", parts)
+        next
+      end
+
+      if (fuzzed = search_in_tree(parts[:request_path].reverse, fuzzy_tree_inversed))
+        fuzzed.reverse!
+        on_suspicious_request.call("dictionary:#{fuzzed}", parts)
+        next
+      end
+    end
+  end
+end
+
+if ARGV[0].nil?
+  STDERR.puts "Usage: cat access.log | ruby scanner fuzz.txt"
+  exit
+end
+
+AccessLogScanner.new.run(argv: ARGV)
