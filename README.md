@@ -1,5 +1,5 @@
 # Access.log Fuzzing Detector
-Scans access.log to find tries of fuzzing.
+Very simple (and stupid) scanner that able to detect tries of [fuzzing](https://en.wikipedia.org/wiki/Fuzzing).
 
 ## Prerequisites
 
