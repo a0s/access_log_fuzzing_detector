@@ -83,7 +83,7 @@ class AccessLogScanner
   end
 
   def on_suspicious_request
-    proc { |reason, parts| puts "[#{reason}] #{parts[0]}" }
+    proc { |reason, parts| STDOUT.puts "[#{reason}] #{parts[0]}" }
   end
 
   def load_file(file_name)
