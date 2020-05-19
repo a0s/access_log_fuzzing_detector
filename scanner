@@ -88,7 +88,7 @@ class AccessLogScanner
 
   def load_file(file_name)
     raw = File.read(file_name)
-    list = raw.split("\n").map(&:strip)
+    list = raw.split("\n").map(&:strip).map { |s| s == '' ? nil : s }.compact
     prepare_list(list)
   end
 
