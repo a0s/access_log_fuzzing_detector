@@ -8,7 +8,7 @@ Very simple (and stupid) scanner that able to detect attempts of [fuzzing](https
 
 * ruby interpretator in PATH
 * access.log should be in [default nginx format](https://nginx.org/en/docs/http/ngx_http_log_module.html)
-* downloaded fuzzing dictionary (for example, you cat get it [here](https://github.com/Bo0oM/fuzz.txt/blob/master/fuzz.txt), 
+* downloaded fuzzing dictionary `fuzz.txt` (for example, you cat get it [here](https://github.com/Bo0oM/fuzz.txt/blob/master/fuzz.txt), 
 [here](https://github.com/maurosoria/dirsearch/blob/master/db/dicc.txt), or [here](https://github.com/daviddias/node-dirbuster/tree/master/lists))
 
 ## Usage
