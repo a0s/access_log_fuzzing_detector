@@ -4,6 +4,11 @@ Very simple (and stupid) scanner that able to detect attempts of [fuzzing](https
 
 ![](https://user-images.githubusercontent.com/418868/82338139-31d06680-99f5-11ea-8c88-beb33b5ed97a.gif)
 
+## Features
+
+* fast search in dictionary
+* unlimited size of dictionary
+
 ## Prerequisites
 
 * ruby interpretator in PATH
